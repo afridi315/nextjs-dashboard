@@ -13,7 +13,7 @@ const FormSchema = z.object({
 });
 
 const CreateInvoice = FormSchema.omit({ id: true, date: true });
-const UpdateInvoice = FormSchema.omit({id:true, date: true});
+const UpdateInvoice = FormSchema.omit({ id: true, date: true });
 
 export async function createInvoice(formData: FormData) {
   const { customerId, amount, status } = CreateInvoice.parse({
@@ -24,39 +24,60 @@ export async function createInvoice(formData: FormData) {
   const amountInCents = amount * 100;
   const date = new Date().toISOString().split('T')[0];
 
-  await sql`
-    INSERT INTO invoices (customer_id, amount, status, date)
-    VALUES(${customerId}, ${amountInCents}, ${status}, ${date})
-  `;
+  try {
+    await sql`
+        INSERT INTO invoices (customer_id, amount, status, date)
+        VALUES(${customerId}, ${amountInCents}, ${status}, ${date})
+      `;
+  } catch (error) {
+    return {
+      message:
+        'An error occurred while creating the invoice. Please try again.',
+    };
+  }
 
   clearandredirect();
-
 }
 
-export async function updateInvoice(id:string, formData: FormData) {
-    const {customerId, amount, status} = UpdateInvoice.parse({
-        customerId: formData.get('customerId'),
-        amount: formData.get('amount'),
-        status: formData.get('status'),
-    });
-    
-    const amountInCents = amount * 100;
+export async function updateInvoice(id: string, formData: FormData) {
+  const { customerId, amount, status } = UpdateInvoice.parse({
+    customerId: formData.get('customerId'),
+    amount: formData.get('amount'),
+    status: formData.get('status'),
+  });
 
+  const amountInCents = amount * 100;
+
+  try {
     await sql`
-        UPDATE invoices
-        SET customer_id = ${customerId}, amount = ${amountInCents}, status = ${status}
-        WHERE id = ${id}
-    `;
+            UPDATE invoices
+            SET customer_id = ${customerId}, amount = ${amountInCents}, status = ${status}
+            WHERE id = ${id}
+        `;
+  } catch (error) {
+    return {
+      message:
+        'An error occurred while updating the invoice. Please try again.',
+    };
+  }
 
-    clearandredirect();
+  clearandredirect();
 }
 
 export async function deleteInvoice(id: string) {
+  try {
     await sql`DELETE FROM invoices WHERE id = ${id}`;
     revalidatePath('/dashboard/invoices');
+    return { message: 'Invoice deleted successfully.' };
+  } catch (error) {
+    return {
+      message:
+        'An error occurred while deleting the invoice. Please try again.',
+    };
   }
+}
 
 function clearandredirect() {
-    revalidatePath('/dashboard/invoices');
-    redirect('/dashboard/invoices');
+  revalidatePath('/dashboard/invoices');
+  redirect('/dashboard/invoices');
 }
